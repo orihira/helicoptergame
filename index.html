@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="data:," />
+<title>ヘリde破壊</title>
+<style>
+:root{
+--ink:#f2f4f1; --dim:#b9c2bb; --accent:#ffb02e; --danger:#ff5a3c; --good:#57d977;
+--plate:rgba(10,14,12,.72); --plate2:rgba(10,14,12,.55); --line:rgba(255,255,255,.16);
+color-scheme: dark;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;height:100%;overflow:hidden;background:#0b0f0d;font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;color:var(--ink);}
+button{min-height:2.25rem;font-family:inherit;}
+#app{position:fixed;inset:0;}
+canvas{display:block;touch-action:none;}
+.noselect{user-select:none;-webkit-user-select:none;touch-action:none;}
+/* ---------- HUD ---------- */
+#hud{position:absolute;inset:0;pointer-events:none;display:none;}
+#hud.on{display:block;}
+.topbar{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;padding:.5rem .6rem;}
+.plate{background:var(--plate);border:1px solid var(--line);border-radius:.45rem;padding:.35rem .6rem;backdrop-filter:blur(3px);}
+.lab{font-size:.6rem;letter-spacing:.14em;color:var(--dim);font-weight:700;}
+.num{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;font-weight:800;line-height:1.05;}
+#timeBox .num{font-size:1.7rem;color:#fff;}
+#timeBox.low .num{color:var(--danger);}
+#fuelBar{height:100%;background:var(--good);width:100%;transition:width .2s;}
+#timeBox.warn #fuelBar{background:var(--accent);}
+#timeBox.low #fuelBar{background:var(--danger);}
+#scoreBox{text-align:center;flex:0 1 auto;}
+#scoreBox .num{font-size:1.35rem;color:var(--accent);}
+#yenLine{font-size:.72rem;color:#fff;font-family:ui-monospace,Menlo,monospace;}
+#rateBox{text-align:right;}
+#rateBox .num{font-size:1.7rem;color:var(--good);}
+#timeBox .lab,#scoreBox .lab,#rateBox .lab{color:#fff;}
+#scoreBox .num{color:#fff;}
+#rateBox .num{color:#fff;}
+#subStats{position:absolute;top:4.4rem;right:.6rem;text-align:right;font-size:.72rem;color:var(--dim);background:var(--plate2);border-radius:.4rem;padding:.3rem .55rem;border:1px solid var(--line);}
+#subStats b{color:var(--ink);font-family:ui-monospace,Menlo,monospace;}
+/* combo */
+#combo{position:absolute;top:16%;left:50%;transform:translateX(-50%) scale(.8);text-align:center;opacity:0;transition:opacity .15s, transform .15s;}
+#combo.show{opacity:1;transform:translateX(-50%) scale(1);}
+#combo .cnum{font-size:2.6rem;font-weight:900;color:#fff;text-shadow:0 2px 0 #7a3c00,0 4px 14px rgba(0,0,0,.6);font-family:ui-monospace,Menlo,monospace;}
+#combo .clab{font-size:.75rem;font-weight:800;letter-spacing:.3em;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.8);}
+#comboBarWrap{width:9rem;height:.35rem;background:rgba(0,0,0,.5);margin:.3rem auto 0;border-radius:1rem;overflow:hidden;}
+#comboBar{height:100%;background:var(--accent);width:100%;}
+/* heli hp + weapon state */
+#leftStats{position:absolute;left:.6rem;top:4.4rem;background:var(--plate2);border:1px solid var(--line);border-radius:.4rem;padding:.4rem .55rem;width:9.5rem;}
+.barWrap{height:.55rem;background:rgba(255,255,255,.14);border-radius:1rem;overflow:hidden;margin:.15rem 0 .4rem;}
+#hpBar{height:100%;background:var(--good);width:100%;transition:width .2s;}
+#hpBar.hurt{background:var(--danger);}
+.wrow{display:flex;justify-content:space-between;font-size:.68rem;color:var(--dim);margin-top:.15rem;}
+.wrow b{color:var(--ink);font-family:ui-monospace,Menlo,monospace;}
+.wrow.ready{color:var(--good);}
+/* center message */
+#centerMsg{position:absolute;top:34%;left:50%;transform:translate(-50%,-50%);font-size:1.6rem;font-weight:900;letter-spacing:.08em;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.85);opacity:0;transition:opacity .25s;text-align:center;white-space:nowrap;}
+#centerMsg.show{opacity:1;}
+/* return-to-pad guidance */
+#padNav{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none;}
+#padArrow{position:absolute;left:0;top:0;width:2.1rem;height:2.1rem;border-radius:50%;background:var(--plate);border:1.5px solid var(--accent);color:var(--accent);font-size:1.05rem;font-weight:900;display:flex;align-items:center;justify-content:center;text-shadow:0 1px 4px rgba(0,0,0,.8);}
+#padDist{position:absolute;left:0;top:3.4rem;transform:translateX(-50%);white-space:nowrap;background:var(--plate2);border:1px solid var(--line);border-radius:.4rem;padding:.22rem .55rem;font-size:.72rem;font-weight:800;color:#fff;}
+#fuelDist{position:absolute;left:0;top:5.35rem;transform:translateX(-50%);white-space:nowrap;background:var(--plate2);border:1px solid var(--line);border-radius:.4rem;padding:.22rem .55rem;font-size:.72rem;font-weight:800;color:#fff;}
+#refuelBox{position:absolute;top:19%;left:50%;transform:translateX(-50%);width:min(330px,80vw);background:rgba(9,42,21,.9);border:1.5px solid #35d05a;border-radius:.5rem;padding:.55rem .75rem;display:none;z-index:6;box-shadow:0 4px 18px rgba(0,0,0,.5);}
+#refuelBox.show{display:block;}
+#refuelBox .rfLab{font-weight:900;color:#fff;font-size:.88rem;text-align:center;letter-spacing:.03em;}
+#refuelBar{height:100%;background:#35d05a;width:0%;}
+#refuelBox .rfSub{font-size:.72rem;color:#fff;text-align:center;margin-top:.3rem;}
+#repairDist{position:absolute;left:0;top:7.3rem;transform:translateX(-50%);white-space:nowrap;background:var(--plate2);border:1px solid var(--line);border-radius:.4rem;padding:.22rem .55rem;font-size:.72rem;font-weight:800;color:#fff;}
+#repairBox{position:absolute;top:19%;left:50%;transform:translateX(-50%);width:min(330px,80vw);background:rgba(8,32,48,.9);border:1.5px solid #38bdf8;border-radius:.5rem;padding:.55rem .75rem;display:none;z-index:6;box-shadow:0 4px 18px rgba(0,0,0,.5);}
+#repairBox.show{display:block;}
+#repairBox .rpLab{font-weight:900;color:#fff;font-size:.88rem;text-align:center;letter-spacing:.03em;}
+#repairBar{height:100%;background:#38bdf8;width:0%;}
+#repairBox .rpSub{font-size:.72rem;color:#fff;text-align:center;margin-top:.3rem;}
+#returnWarn{position:absolute;top:11.5%;left:50%;transform:translateX(-50%);display:none;background:rgba(148,22,8,.85);border:1.5px solid #ff8a70;border-radius:.45rem;color:#fff;font-weight:900;font-size:clamp(.82rem,3.4vw,1.05rem);letter-spacing:.04em;padding:.5rem .9rem;text-align:center;white-space:nowrap;box-shadow:0 4px 18px rgba(0,0,0,.5);}
+#returnWarn.show{display:block;animation:warnPulse .55s ease-in-out infinite alternate;}
+@keyframes warnPulse{from{opacity:1;}to{opacity:.62;}}
+@media (prefers-reduced-motion: reduce){#returnWarn.show{animation:none;}}
+/* scramble / jet */
+#hitFlash{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 42%,rgba(255,40,10,.55) 100%);opacity:0;z-index:6;}
+#hitFlash.on{animation:hitFlashA .38s ease-out;}
+@keyframes hitFlashA{0%{opacity:1;}100%{opacity:0;}}
+#jetBox{position:absolute;top:18.6rem;left:.6rem;width:9.5rem;background:rgba(90,10,5,.72);border:1px solid rgba(255,120,90,.65);border-radius:.4rem;padding:.4rem .55rem;display:none;}
+#jetBox.on{display:block;}
+#jetBox .lab{color:#fff;}
+#jetBar{height:100%;background:#ff7a3c;width:100%;transition:width .2s;}
+#ehBox{position:absolute;top:14rem;left:.6rem;width:9.5rem;background:rgba(96,52,4,.78);border:1px solid rgba(255,196,60,.7);border-radius:.4rem;padding:.4rem .55rem;display:none;}
+#ehBox.on{display:block;}
+#ehBox .lab{color:#fff;}
+#ehBar{height:100%;background:#ffc21f;width:100%;transition:width .2s;}
+#ehIntroOverlay{position:absolute;inset:0;display:none;z-index:21;pointer-events:none;}
+#ehIntroOverlay.on{display:block;}
+#ehIntroBanner{position:absolute;top:12%;left:50%;transform:translateX(-50%);text-align:center;background:rgba(120,62,2,.9);border:2px solid #ffc21f;border-radius:.5rem;padding:.7rem 1.2rem .8rem;box-shadow:0 6px 30px rgba(0,0,0,.6);max-width:92vw;}
+#ehIntroBanner .big{font-size:clamp(1.3rem,5.5vw,2rem);font-weight:900;letter-spacing:.12em;color:#fff;white-space:nowrap;}
+#ehIntroBanner .sub{font-size:.78rem;color:#fff;margin-top:.25rem;font-weight:700;}
+#ehSkipBtn{pointer-events:auto;position:absolute;bottom:16%;left:50%;transform:translateX(-50%);background:rgba(10,14,12,.8);color:#fff;border:1.5px solid rgba(255,255,255,.6);border-radius:2rem;padding:.55rem 1.3rem;font-weight:800;font-size:.85rem;cursor:pointer;}
+#scrambleOverlay{position:absolute;inset:0;display:none;z-index:20;pointer-events:none;}
+#scrambleOverlay.on{display:block;}
+#scrambleBanner{position:absolute;top:12%;left:50%;transform:translateX(-50%);text-align:center;background:rgba(120,8,2,.88);border:2px solid #ff6a4d;border-radius:.5rem;padding:.7rem 1.2rem .8rem;box-shadow:0 6px 30px rgba(0,0,0,.6);animation:warnPulse .4s ease-in-out infinite alternate;max-width:92vw;}
+#scrambleBanner .big{font-size:clamp(1.3rem,5.5vw,2rem);font-weight:900;letter-spacing:.12em;color:#fff;white-space:nowrap;}
+#scrambleBanner .sub{font-size:.78rem;color:#fff;margin-top:.25rem;font-weight:700;}
+#skipBtn{pointer-events:auto;position:absolute;bottom:16%;left:50%;transform:translateX(-50%);background:rgba(10,14,12,.8);color:#fff;border:1.5px solid rgba(255,255,255,.6);border-radius:2rem;padding:.55rem 1.3rem;font-weight:800;font-size:.85rem;cursor:pointer;}
+@media (prefers-reduced-motion: reduce){#scrambleBanner{animation:none;}}
+/* crosshair */
+#cross{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2rem;height:2rem;opacity:.85;}
+#cross::before,#cross::after{content:"";position:absolute;background:rgba(255,255,255,.9);box-shadow:0 0 4px rgba(0,0,0,.7);}
+#cross::before{left:50%;top:0;width:2px;height:100%;transform:translateX(-50%);clip-path:polygon(0 0,100% 0,100% 38%,0 38%,0 62%,100% 62%,100% 100%,0 100%);}
+#cross::after{top:50%;left:0;height:2px;width:100%;transform:translateY(-50%);clip-path:polygon(0 0,38% 0,38% 100%,0 100%,62% 0,100% 0,100% 100%,62% 100%);}
+/* ---------- touch controls ---------- */
+#touchUI{position:absolute;inset:auto 0 0 0;display:none;justify-content:space-between;align-items:flex-end;padding:0.7rem calc(.7rem + env(safe-area-inset-bottom));pointer-events:none;}
+#hud.on #touchUI{display:flex;}
+#stickBase{pointer-events:auto;position:relative;width:7.2rem;height:7.2rem;border-radius:50%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.28);flex:0 0 auto;}
+#stickKnob{position:absolute;left:50%;top:50%;width:3.1rem;height:3.1rem;border-radius:50%;background:rgba(255,255,255,.28);border:1.5px solid rgba(255,255,255,.5);transform:translate(-50%,-50%);}
+#stickBase .sLab{position:absolute;left:0;right:0;bottom:-1.05rem;text-align:center;font-size:.6rem;color:var(--dim);letter-spacing:.1em;}
+#btnCluster{pointer-events:none;display:flex;flex-direction:column;gap:.5rem;align-items:flex-end;}
+.btnRow{display:flex;gap:.5rem;pointer-events:none;}
+.tbtn{pointer-events:auto;width:3.4rem;height:3.4rem;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);background:rgba(12,16,14,.62);color:#fff;font-weight:800;font-size:.72rem;line-height:1.15;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;}
+.tbtn:active,.tbtn.held{background:rgba(255,176,46,.75);color:#141414;}
+.tbtn small{font-size:.55rem;font-weight:700;opacity:.85;}
+.tbtn.fire{width:4.1rem;height:4.1rem;background:rgba(160,42,18,.72);border-color:rgba(255,150,110,.7);}
+.tbtn.fire:active,.tbtn.fire.held{background:rgba(255,90,60,.9);color:#fff;}
+.tbtn.missile{background:rgba(24,70,110,.72);border-color:rgba(130,190,255,.65);}
+.tbtn.missile:active,.tbtn.missile.held{background:rgba(60,140,220,.9);color:#fff;}
+.tbtn.gun{background:rgba(122,84,10,.72);border-color:rgba(255,210,110,.65);}
+.tbtn.gun:active,.tbtn.gun.held{background:rgba(255,176,46,.92);color:#141414;}
+.tbtn.homing{background:rgba(8,84,72,.72);border-color:rgba(110,255,220,.6);}
+.tbtn.homing:active,.tbtn.homing.held{background:rgba(24,184,152,.92);color:#fff;}
+.tbtn.cd{opacity:.45;}
+@media (min-width:821px){ #stickBase{width:6rem;height:6rem;}.tbtn{width:3rem;height:3rem;}.tbtn.fire{width:3.6rem;height:3.6rem;}}
+/* ---------- screens ---------- */
+.screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;background:linear-gradient(180deg,rgba(5,8,7,.25),rgba(5,8,7,.62));}
+.screen.hidden{display:none;}
+.card{background:rgba(9,13,11,.88);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:.6rem;max-width:26rem;width:100%;padding:1.1rem 1.2rem 1.2rem;max-height:calc(100dvh - 2rem);overflow:auto;}
+.card h1{margin:0;font-size:1.9rem;font-weight:900;letter-spacing:.04em;}
+.card h1.heli{color:var(--accent);}
+.tagline{margin:.35rem 0 .8rem;color:var(--dim);font-size:.85rem;line-height:1.55;}
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:.45rem .8rem;font-size:.78rem;margin:.7rem 0;}
+.rules div{background:rgba(255,255,255,.05);border-radius:.4rem;padding:.45rem .55rem;line-height:1.45;}
+.rules b{color:var(--accent);display:block;font-size:.72rem;letter-spacing:.06em;margin-bottom:.1rem;}
+.keys{font-size:.72rem;color:var(--dim);line-height:1.7;border-top:1px solid var(--line);padding-top:.6rem;margin-top:.2rem;}
+.keys code{background:rgba(255,255,255,.12);border-radius:.25rem;padding:.05rem .35rem;color:#fff;font-family:ui-monospace,Menlo,monospace;font-size:.7rem;}
+.bigbtn{pointer-events:auto;display:block;width:100%;margin-top:.9rem;padding:.85rem;font-size:1.1rem;font-weight:900;letter-spacing:.1em;background:var(--accent);color:#191104;border:none;border-radius:.5rem;cursor:pointer;}
+.bigbtn:active{transform:translateY(1px);}
+.subbtn{display:block;width:100%;margin-top:.5rem;padding:.6rem;font-size:.85rem;font-weight:700;background:rgba(255,255,255,.1);color:var(--ink);border:1px solid var(--line);border-radius:.5rem;cursor:pointer;}
+#bestLine{margin-top:.7rem;font-size:.78rem;color:var(--dim);text-align:center;min-height:1.1em;}
+#bestLine b{color:var(--accent);font-family:ui-monospace,Menlo,monospace;}
+/* stage select */
+.stageGrid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:.6rem 0 .4rem;}
+.stageCard{pointer-events:auto;text-align:left;background:rgba(255,255,255,.06);border:2px solid var(--line);border-radius:.55rem;padding:.55rem .6rem .6rem;cursor:pointer;color:var(--ink);}
+.stageCard .bar{height:.45rem;border-radius:1rem;margin-bottom:.45rem;}
+.stageCard .sname{font-weight:900;font-size:1rem;letter-spacing:.03em;}
+.stageCard .sdesc{font-size:.68rem;color:var(--dim);line-height:1.45;margin-top:.15rem;}
+.stageCard.sel{border-color:var(--accent);background:rgba(255,176,46,.13);}
+.stageCard.sel .sname{color:var(--accent);}
+#stageBest{font-size:.72rem;color:var(--dim);text-align:center;min-height:1em;}
+/* result */
+#rankBig{font-size:4.2rem;font-weight:900;line-height:1;text-align:center;color:var(--accent);text-shadow:0 3px 0 rgba(0,0,0,.45);}
+#rankWord{text-align:center;font-size:.8rem;letter-spacing:.35em;color:var(--dim);margin-bottom:.6rem;}
+.statTable{width:100%;border-collapse:collapse;font-size:.92rem;}
+.statTable td{padding:.42rem .2rem;border-bottom:1px solid rgba(255,255,255,.09);}
+.statTable td:last-child{text-align:right;font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:1.02rem;}
+.statTable.hl td{color:var(--accent);}
+#newBest{display:none;text-align:center;color:var(--good);font-weight:800;font-size:.85rem;margin-top:.5rem;}
+#resultNote{display:none;text-align:center;font-weight:800;font-size:.88rem;margin-top:.55rem;line-height:1.5;}
+#resultNote.good{color:var(--good);}
+#resultNote.bad{color:var(--danger);}
+#copyMsg{text-align:center;font-size:.75rem;color:var(--good);min-height:1em;margin-top:.35rem;}
+#errBox{position:absolute;left:.6rem;bottom:.6rem;right:.6rem;background:rgba(120,10,10,.92);color:#fff;font-size:.75rem;padding:.5rem .7rem;border-radius:.4rem;display:none;z-index:50;white-space:pre-wrap;}
+.bigbtn:disabled{opacity:.45;cursor:wait;}
+.stageCard:disabled{opacity:.5;cursor:wait;}
+#bootMsg{margin-top:.55rem;text-align:center;font-size:.78rem;color:var(--dim);min-height:1.1em;line-height:1.5;}
+#vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 58%,rgba(4,6,10,.26) 100%);z-index:1;}
+/* ---------- v2 additions ---------- */
+#popLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:4;}
+.pop{position:absolute;left:0;top:0;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-weight:900;font-size:1.15rem;color:#fff;letter-spacing:.02em;white-space:nowrap;text-shadow:0 1px 0 #6a3a00,0 0 10px rgba(255,160,40,.85),0 2px 8px rgba(0,0,0,.75);will-change:transform,opacity;opacity:0;}
+.pop.big{font-size:1.65rem;color:#ffe08a;}
+.pop.hot{color:#ffb02e;text-shadow:0 1px 0 #7a1c00,0 0 14px rgba(255,90,30,.95),0 2px 8px rgba(0,0,0,.75);}
+.pop.combo{font-size:1.5rem;letter-spacing:.12em;color:#fff;text-shadow:0 1px 0 #7a1c00,0 0 18px rgba(255,70,30,1),0 2px 10px rgba(0,0,0,.8);}
+/* touch controls only where there is touch */
+@media (hover:hover) and (pointer:fine){ #touchUI{display:none!important;} body.touched #hud.on #touchUI{display:flex!important;} #stickBase .sLab{display:none;} }
+/* HUD glass */
+.plate{background:linear-gradient(180deg,rgba(20,27,24,.80),rgba(8,12,10,.66));border:1px solid rgba(255,255,255,.13);border-top:2px solid var(--accent);border-radius:.6rem;box-shadow:0 8px 22px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.06);backdrop-filter:blur(6px);}
+#leftStats{background:linear-gradient(180deg,rgba(20,27,24,.74),rgba(8,12,10,.6));border-radius:.6rem;box-shadow:0 8px 22px rgba(0,0,0,.35);backdrop-filter:blur(6px);}
+#subStats{background:linear-gradient(180deg,rgba(20,27,24,.7),rgba(8,12,10,.58));border-radius:.6rem;backdrop-filter:blur(6px);}
+.barWrap{height:.62rem;box-shadow:inset 0 1px 3px rgba(0,0,0,.6);}
+#fuelBar{background:linear-gradient(90deg,#2fbf57,#7dfc9a);box-shadow:0 0 10px rgba(87,217,119,.7);}
+#timeBox.warn #fuelBar{background:linear-gradient(90deg,#e8921a,#ffd36a);box-shadow:0 0 10px rgba(255,176,46,.7);}
+#timeBox.low #fuelBar{background:linear-gradient(90deg,#d63a1e,#ff8a6a);box-shadow:0 0 12px rgba(255,90,60,.85);}
+#hpBar{background:linear-gradient(90deg,#2fbf57,#7dfc9a);box-shadow:0 0 8px rgba(87,217,119,.6);}
+#hpBar.hurt{background:linear-gradient(90deg,#d63a1e,#ff8a6a);box-shadow:0 0 10px rgba(255,90,60,.8);}
+#scoreBox .num{text-shadow:0 0 14px rgba(255,176,46,.55);}
+#timeBox.low .num{animation:lowPulse .5s ease-in-out infinite alternate;}
+@keyframes lowPulse{from{opacity:1;}to{opacity:.55;}}
+@media (prefers-reduced-motion: reduce){#timeBox.low .num{animation:none;}}
+#combo.bump .cnum{animation:cnumBump .28s cubic-bezier(.2,1.6,.4,1);}
+@keyframes cnumBump{0%{transform:scale(1.7);}100%{transform:scale(1);}}
+#combo .cnum{font-size:3rem;text-shadow:0 2px 0 #7a3c00,0 0 22px rgba(255,150,40,.9),0 4px 14px rgba(0,0,0,.6);}
+#cross{filter:drop-shadow(0 0 3px rgba(0,0,0,.8));}
+/* title / cards */
+.card{background:linear-gradient(180deg,rgba(14,19,17,.9),rgba(7,10,9,.9));backdrop-filter:blur(10px);border-radius:.8rem;box-shadow:0 20px 60px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04);}
+.card h1{font-size:2.3rem;text-shadow:0 3px 0 rgba(0,0,0,.45);}
+.card h1.heli,.card h1 .heli{background:linear-gradient(180deg,#ffd77a,#ff9a1f);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none;filter:drop-shadow(0 0 12px rgba(255,176,46,.45)) drop-shadow(0 2px 0 rgba(0,0,0,.5));}
+.quick{font-size:.74rem;color:var(--dim);line-height:1.7;margin:.55rem 0 .2rem;padding:.5rem .65rem;background:rgba(255,255,255,.05);border-radius:.45rem;border-left:3px solid var(--accent);}
+.quick code{background:rgba(255,255,255,.13);border-radius:.25rem;padding:.04rem .32rem;color:#fff;font-family:ui-monospace,Menlo,monospace;font-size:.7rem;}
+details.howto{margin-top:.5rem;}
+details.howto>summary{cursor:pointer;list-style:none;font-size:.8rem;font-weight:800;color:var(--accent);padding:.45rem .2rem;letter-spacing:.04em;}
+details.howto>summary::-webkit-details-marker{display:none;}
+details.howto[open]>summary{margin-bottom:.2rem;}
+.stageCard{transition:transform .12s ease,border-color .12s ease,background .12s ease;}
+.stageCard:hover:not(:disabled){transform:translateY(-2px);border-color:rgba(255,176,46,.6);}
+.bigbtn{background:linear-gradient(180deg,#ffc24d,#ff9a1f);box-shadow:0 6px 24px rgba(255,150,30,.35),inset 0 1px 0 rgba(255,255,255,.5);transition:transform .1s,box-shadow .15s;}
+.bigbtn:hover:not(:disabled){box-shadow:0 8px 32px rgba(255,150,30,.55),inset 0 1px 0 rgba(255,255,255,.5);}
+.subbtn:hover{background:rgba(255,255,255,.17);}
+/* result reveal */
+.card.anim .statTable tr{opacity:0;transform:translateY(8px);animation:rowIn .36s ease forwards;}
+.card.anim .statTable tr:nth-child(1){animation-delay:.55s}.card.anim .statTable tr:nth-child(2){animation-delay:.65s}.card.anim .statTable tr:nth-child(3){animation-delay:.75s}.card.anim .statTable tr:nth-child(4){animation-delay:.85s}.card.anim .statTable tr:nth-child(5){animation-delay:.95s}.card.anim .statTable tr:nth-child(6){animation-delay:1.05s}.card.anim .statTable tr:nth-child(7){animation-delay:1.15s}.card.anim .statTable tr:nth-child(8){animation-delay:1.25s}.card.anim .statTable tr:nth-child(9){animation-delay:1.35s}
+@keyframes rowIn{to{opacity:1;transform:none;}}
+.card.anim #rankBig{animation:stamp .55s cubic-bezier(.2,1.5,.4,1) both;}
+@keyframes stamp{0%{opacity:0;transform:scale(3.2) rotate(-8deg);}100%{opacity:1;transform:none;}}
+#rankBig{font-size:5rem;text-shadow:0 0 36px rgba(255,176,46,.5),0 4px 0 rgba(0,0,0,.45);}
+.card.anim #newBest{animation:rowIn .4s 1.5s ease both;}
+@media (prefers-reduced-motion: reduce){.card.anim .statTable tr,.card.anim #rankBig,.card.anim #newBest{animation:none;opacity:1;transform:none;}}
+
+</style>
+</head>
+<body>
+<div id="app" class="noselect">
+<div id="vig"></div>
+<!-- HUD -->
+<div id="hud">
+<div class="topbar">
+<div class="plate" id="timeBox"><div class="lab">燃料 FUEL（秒）</div><div class="num" id="timeNum">90</div><div class="barWrap" style="margin-bottom:0"><div id="fuelBar"></div></div></div>
+<div class="plate" id="scoreBox"><div class="lab">SCORE</div><div class="num" id="scoreNum">0</div><div id="yenLine">被害総額 ¥0</div></div>
+<div class="plate" id="rateBox"><div class="lab">破壊率</div><div class="num"><span id="rateNum">0.0</span><span style="font-size:.9rem">%</span></div></div>
+</div>
+<div id="leftStats">
+<div class="lab">ヘリ耐久</div>
+<div class="barWrap"><div id="hpBar"></div></div>
+<div class="wrow"><span>💣 爆弾 [F]</span><b id="bombState" class="ready">READY</b></div>
+<div class="wrow"><span>🧨 ミサイル [G]</span><b id="mslState" class="ready">READY</b></div>
+<div class="wrow"><span>🎯 誘導ミサイル [J]</span><b id="homState" class="ready">READY</b></div>
+<div class="wrow"><span>⚡ 機関銃 [H長押し]</span><b id="gunState" class="ready">READY</b></div>
+</div>
+<div id="ehBox"><div class="lab">⚠ 敵ヘリ 交戦中</div><div class="barWrap"><div id="ehBar"></div></div><div style="font-size:.65rem;color:#fff">機関銃・ミサイルで撃墜可能 ＋2,500点</div></div>
+<div id="jetBox"><div class="lab">⚠ 敵戦闘機 交戦中</div><div class="barWrap"><div id="jetBar"></div></div><div style="font-size:.65rem;color:#fff">機関銃・ミサイルで撃墜可能 ＋5,000点</div></div>
+<div id="subStats">倒壊 <b id="downNum">0</b> / <span id="totalNum">0</span>棟<br>最大コンボ <b id="maxComboNum">0</b></div>
+<div id="combo"><div class="clab">COMBO</div><div class="cnum">×<span id="comboNum">2</span></div><div id="comboBarWrap"><div id="comboBar"></div></div></div>
+<div id="cross"></div>
+<div id="padNav"><div id="padArrow">▲</div><div id="padDist">ヘリポート 0m</div><div id="fuelDist">⛽ 給油スポット 0m</div><div id="repairDist">🔧 整備場 0m</div></div>
+<div id="returnWarn">⚠ 燃料残量わずか — ヘリポートへ戻れ！</div>
+<div id="refuelBox"><div class="rfLab">⛽ 給油中… 敵の攻撃に注意！</div><div class="barWrap" style="margin:.35rem 0 0"><div id="refuelBar"></div></div><div class="rfSub">あと <span id="refuelSec">5.0</span> 秒キープで 燃料 +45秒</div></div>
+<div id="repairBox"><div class="rpLab">🔧 整備中… 敵の攻撃に注意！</div><div class="barWrap" style="margin:.35rem 0 0"><div id="repairBar"></div></div><div class="rpSub">あと <span id="repairSec">3.0</span> 秒キープで 耐久 全回復（被弾すると回復しきれない）</div></div>
+<div id="centerMsg"></div>
+<div id="hitFlash"></div>
+<div id="touchUI">
+<div id="stickBase"><div id="stickKnob"></div><div class="sLab">移動スティック</div></div>
+<div id="btnCluster">
+<div class="btnRow">
+<button class="tbtn" id="btnTurnL">◀<small>左旋回</small></button>
+<button class="tbtn" id="btnUp">▲<small>上昇</small></button>
+<button class="tbtn" id="btnTurnR">▶<small>右旋回</small></button>
+</div>
+<div class="btnRow">
+<button class="tbtn missile" id="btnMissile">🧨<small>ミサイル</small></button>
+<button class="tbtn" id="btnDown">▼<small>下降</small></button>
+<button class="tbtn fire" id="btnBomb">💣<small>爆弾</small></button>
+</div>
+<div class="btnRow">
+<button class="tbtn gun" id="btnGun">⚡<small>機関銃</small></button>
+<button class="tbtn homing" id="btnHoming">🎯<small>誘導 残<span id="homCount">3</span>発</small></button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ENEMY HELI TAKEOFF OVERLAY -->
+<div id="ehIntroOverlay"><div id="ehIntroBanner"><div class="big">⚠ 敵ヘリ発進！</div><div class="sub">敵攻撃ヘリが離陸 — 機銃で攻撃してくる！</div></div><button id="ehSkipBtn">▶ スキップ</button></div>
+
+<!-- SCRAMBLE CUTSCENE OVERLAY -->
+<div id="scrambleOverlay"><div id="scrambleBanner"><div class="big">⚠ スクランブル発進！</div><div class="sub">敵戦闘機が緊急発進 — 迎撃に来るぞ！</div></div><button id="skipBtn">▶ スキップ</button></div>
+
+<!-- START -->
+<div class="screen" id="startScreen">
+<div class="card">
+<h1><span class="heli">ヘリ</span>de破壊</h1>
+<p class="tagline">小型攻撃ヘリで街の上空を飛び回り、<b style="color:#fff">燃料90秒</b>でどれだけ街を破壊できるかを競うスコアアタック。高いビルほど高得点、タンクとガソリンスタンドは誘爆してコンボが伸びる。ただし<b style="color:#ffb02e">時間内にヘリポートへ帰還しなければ記録は残らない</b>。</p>
+<div class="lab" style="margin-top:.2rem">ステージ選択 — STAGE SELECT</div>
+<div class="stageGrid" id="stageGrid">
+<button class="stageCard sel" data-stage="city" disabled><div class="bar" style="background:#ffb02e"></div><div class="sname">🏙 都市</div><div class="sdesc">高層ビル街。看板・コンビニ・公園のある市街地で誘爆コンボを狙え</div></button>
+<button class="stageCard" data-stage="school" disabled><div class="bar" style="background:#57d977"></div><div class="sname">🏫 学校</div><div class="sdesc">小学校。4階建て校舎・体育館・25mプール・校庭・校門・通学路がある</div></button>
+<button class="stageCard" data-stage="military" disabled><div class="bar" style="background:#7a8a5a"></div><div class="sname">🪖 軍事施設</div><div class="sdesc">格納庫・司令部・燃料庫・監視塔・駐機戦闘機。柵と検問のある基地、高価値目標だらけ</div></button>
+<button class="stageCard" data-stage="highway" disabled><div class="bar" style="background:#4da3d8"></div><div class="sname">🛣 高速道路</div><div class="sdesc">料金所・SA・ガードレールと標識・防音壁。走る車列で一直線に連鎖爆発を決めろ</div></button>
+<button class="stageCard" data-stage="airport" disabled><div class="bar" style="background:#e8e4da"></div><div class="sname">✈ 空港</div><div class="sdesc">滑走路標示・ターミナル・管制塔・地上作業車両が並ぶ。駐機中の旅客機が目玉の高価値目標</div></button>
+<button class="stageCard" data-stage="office" disabled><div class="bar" style="background:#5b8fc4"></div><div class="sname">🏢 オフィス街</div><div class="sdesc">ガラス張りの高層オフィスビルが林立するビジネス街。本社ビルやタワーが密集し、看板・広場の噴水・立体駐車場のある高額被害エリア</div></button>
+<button class="stageCard" data-stage="radio" disabled><div class="bar" style="background:#e0492e"></div><div class="sname">📡 電波塔</div><div class="sdesc">高さ62mの赤白格子鉄塔がそびえる送信所エリア。パラボラアンテナ・中継塔・送信所を巻き込みながら、目玉の電波塔を倒しきれるか</div></button>
+</div>
+<div id="stageBest">ベスト記録（都市）： まだなし</div>
+<div class="quick"><code>WASD</code>移動 <code>Space</code>上昇 <code>Shift</code>下降 <code>F</code>爆弾 <code>G</code>ミサイル <code>H</code>機関銃(長押し) <code>J</code>誘導ミサイル ／ 画面ドラッグで照準。<b style="color:#fff">燃料90秒、時間内にヘリポートへ着陸で記録が残る。</b></div>
+<details class="howto"><summary>▼ 遊び方・全ルールを見る</summary>
+<div class="rules">
+<div><b>💣 爆弾投下</b>真下に落とす広範囲攻撃。密集地で真価を発揮。爆発は白い閃光→乱流する火球→衝撃波と土煙の輪→遅れてくる二次爆発と続き、地面には焦げ跡が残る。建物は軋んで傾いてから加速して崩れ落ち、地面に叩きつけられる衝撃が伝わってくる</div>
+<div><b>🧭 飛び方は標準方式</b>スティックで前後左右へ移動、▲▼ボタン（PCはSpace／Shift）で上昇・下降する標準方式。画面のドラッグで視点と照準が一緒に動く——ヘリの向きや進む方向は変わらないが、ミサイルと機関銃は照準の方向へ飛ぶ</div>
+<div><b>🧨 ミサイル</b>照準の方向へまっすぐ発射。視点を上に向ければ上へ、下に向ければ下へ撃てる。狙ったビルをピンポイントで</div>
+<div><b>🎯 誘導ミサイル（最大3発）</b>敵ヘリ・戦闘機をロックオンして追尾、高確率で命中して大ダメージ。ただし敵がフレアを焚くと逸れて外れることも。近距離で当てると爆発に巻き込まれて自分もダメージを受ける。使えるのは1回の出撃で最大3発まで — 撃ち切ったらその出撃ではもう撃てない（残数はボタンと左上の武器表示で確認）</div>
+<div><b>⚡ 機関銃（長押し連射）</b>機体下部の砲塔から、照準の方向へ曳光弾を連射。砲塔が照準に合わせて動き、弾が飛んでいくのがはっきり見える。車・敵ヘリ・戦闘機に効く。建物も削れるが爆発はしない</div>
+<div><b>🔥 誘爆コンボ</b>爆発が連鎖するたびコンボ倍率アップ</div>
+<div><b>⚠ 激突注意</b>ビルにぶつかるとヘリが損傷。壊れたら終了</div>
+<div><b>⛽ 帰還必須</b>時間内にヘリポートへ戻って着陸せよ。間に合わなければ燃料切れで墜落＝アウト（記録なし）</div>
+<div><b>🟢 給油スポット（1回のみ）</b>緑の光の柱が目印。着陸して5秒間じっと待機すると燃料を半分（+45秒）補給できる。ただし使えるのは1回だけ——給油が終わるとスポットは消えてしまう。給油中も敵ヘリ・戦闘機の攻撃は止まらないので、使うタイミングが大事</div>
+<div><b>🔵 整備場</b>青い光の柱と「＋」マークが目印。着陸して3秒間じっと待機すると機体耐久が全回復する。ただし整備中も敵の攻撃は止まらない——途中で被弾すると、その分は回復しきれないこともある。燃料も減り続けるので長居は禁物。1回使うと10秒間のクールダウンに入り、その間は座っても回復は始まらない（残り秒数は画面に表示される）</div>
+<div><b>🧭 帰還ナビ</b>黄色い光の柱と、画面中央の矢印＋距離表示がヘリポートを示す</div>
+<div><b>🚁 まず敵ヘリ</b>開始直後、敵攻撃ヘリが発進モーションのあと接近して機銃で撃ってくる。序盤の相手はこの1機だけ</div>
+<div><b>✈ 次に戦闘機</b>開始から約35秒後、戦闘機がスクランブル発進して攻撃に加わる。ここから一気に厳しくなる。機体は16m級の本格派：2色迷彩とパネルライン／リベットの質感、後退翼とLERX、全遊動の尾翼と傾いた双垂直尾翼、コックピット内の射出座席とHUD、インテークの暗い吸気口、翼下パイロンとミサイル、離陸後に格納されるランディングギア、そして左右2基のアフターバーナー（青いコアとショックダイヤモンド付き）</div>
+<div><b>💥 撃墜 or 帰還</b>敵ヘリはミサイルで撃墜可能（＋2,500点）、戦闘機も撃墜可能（＋5,000点）。HPがゼロになるとその場で墜落＝アウト（記録なし）。急旋回と高度変更で回避せよ</div>
+<div><b>🌆 夕景と灯り</b>出撃が進むにつれて日が傾き、空と霧が琥珀色に染まって街の灯りが際立ってくる。高層ビルの航空障害灯の点滅、夕方に灯る街灯の光だまり、走る車のヘッドライト、倒壊した建物の残り火と細い煙も出る</div>
+<div><b>🌃 生きた街並み</b>信号機は青→黄→赤と実際に切り替わり（点いていないランプは暗くなる）、レーダーのパラボラは回り続けて空を監視し、街路樹と桜は風に揺れる。走る車は路面でサスペンションが小さく上下し、ヘリの排気口はエンジンの熱でほのかに明滅する——どれも新しい描画を増やさず、動きだけで実在感を足した軽い演出</div>
+</div>
+<div class="keys">
+PC： <code>W A S D</code> 移動 ／ <code>Q E</code> 旋回 ／ <code>Space</code> 上昇 ／ <code>Shift</code> 下降 ／ <code>F</code> 爆弾 ／ <code>G</code> ミサイル／ <code>H</code> 機関銃（長押しで連射）／ <code>J</code> 誘導ミサイル<br>
+スマホ： 左スティックで移動、右のボタンで上昇・下降・旋回・攻撃（機関銃ボタンは長押しで連射、🎯誘導ボタンは敵機がいる時だけ発射できる）<br>
+見回し・照準： 画面の空いている所をドラッグするとカメラと照準が一緒に動く。左右にドラッグするとヘリもその見た方向へ向き直る。上下に向けると照準も上下に動き、ミサイル・機関銃は照準の方向へ飛ぶ（ヘリの向きや進む方向は変わらない）<br>
+着陸： ヘリポートの円の内側で、ゆっくり降下して接地すれば帰還成功
+</div>
+</details>
+<button class="bigbtn" id="startBtn" disabled>▶ 出撃（燃料90秒・帰還必須）</button>
+<div id="bootMsg">3Dエンジン読み込み中… そのまま少し待ってね</div>
+<div id="bestLine">ベスト記録： まだなし — まずは街を更地にしよう</div>
+</div>
+</div>
+
+<!-- RESULT -->
+<div class="screen hidden" id="resultScreen">
+<div class="card">
+<div id="rankBig">S</div>
+<div id="rankWord">RANK</div>
+<div id="resultNote"></div>
+<table class="statTable">
+<tr><td>ステージ</td><td id="rStage">都市</td></tr>
+<tr><td>結果</td><td id="rOutcome">—</td></tr>
+<tr><td>残り燃料</td><td id="rRemain">0秒</td></tr>
+<tr class="hl"><td>スコア</td><td id="rScore">0</td></tr>
+<tr><td>破壊率</td><td id="rRate">0%</td></tr>
+<tr><td>被害総額</td><td id="rYen">¥0</td></tr>
+<tr><td>倒した建物</td><td id="rDown">0棟</td></tr>
+<tr><td>最大コンボ</td><td id="rCombo">×0</td></tr>
+<tr><td>残り耐久</td><td id="rHp">0</td></tr>
+</table>
+<div id="newBest">★ ベスト記録更新！</div>
+<button class="bigbtn" id="againBtn">↻ 同じステージでもう一度</button>
+<button class="subbtn" id="toStageBtn">🗺 ステージ選択へ戻る</button>
+<button class="subbtn" id="copyBtn">📋 結果をコピーして自慢する</button>
+<div id="copyMsg"></div>
+<div id="bestLine2" style="text-align:center;font-size:.78rem;color:var(--dim);margin-top:.4rem;"></div>
+</div>
+</div>
+
+<div id="errBox"></div>
+</div>
+<script>
+/* Light boot: the title screen above is plain HTML/CSS and paints first.
+   The 3D library and the game code are fetched only after that, so a slow
+   phone still opens the page and shows progress instead of a frozen
+   black screen. If loading fails, guidance + a retry button appear. */
+(function(){
+"use strict";
+var tries=0;
+function msg(t){ var m=document.getElementById('bootMsg'); if(m)m.textContent=t; }
+function fail(){
+msg('3Dエンジンの読み込みに失敗しました。通信環境を確認して、もう一度試してください。');
+var b=document.getElementById('startBtn');
+if(b){ b.disabled=false; b.textContent='↻ もう一度読み込む'; b.onclick=function(){ location.reload(); }; }
+}
+function loadGame(){
+var g=document.createElement('script');
+g.src='game.js';
+g.onload=function(){
+setTimeout(function(){
+if(!window.__heliBooted){
+msg('3Dエンジンの初期化に時間がかかっています。そのまま少し待つか、読み直してください。');
+var b=document.getElementById('startBtn');
+if(b&&b.disabled){ b.disabled=false; b.textContent='↻ 読み込み直す'; b.onclick=function(){ location.reload(); }; }
+}
+},25000);
+};
+g.onerror=fail;
+document.body.appendChild(g);
+}
+function load(){
+tries++;
+var s=document.createElement('script');
+s.src='three.min.js';
+s.onload=function(){ if(typeof THREE==='undefined'){ fail(); return; } loadGame(); };
+s.onerror=function(){ if(tries<3){ msg('3Dエンジン読み込み中…（再試行 '+tries+'/3）'); setTimeout(load,900); } else fail(); };
+document.body.appendChild(s);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load); else load();
+})();
+</script>
+<script src="config.js"></script>
+<script src="ranking.js"></script>
+<script>window.addEventListener('touchstart',function(){document.body.classList.add('touched');},{once:true,passive:true});</script>
+</body>
+
+</html>
