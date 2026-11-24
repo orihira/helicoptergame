@@ -263,6 +263,12 @@ select{background:#1b231f;color:#fff;border:1px solid rgba(255,255,255,.2);borde
 #openSettingsBtn{margin-top:.5rem;width:100%;}
 #fpsBox{position:fixed;left:6px;bottom:6px;z-index:70;font:700 11px ui-monospace,Menlo,monospace;color:#9f9;background:rgba(0,0,0,.5);padding:2px 6px;border-radius:4px;display:none;pointer-events:none;}
 
+body.free #timeBox .num{font-size:0!important;} body.free #timeBox .num::after{content:'∞';font-size:2rem;}
+
+#todBox{margin:.6rem 0 .3rem;padding:.55rem .7rem;background:rgba(255,255,255,.05);border-radius:.5rem;border-left:3px solid var(--accent);}
+#todBox .todLab{font-size:.78rem;font-weight:800;margin-bottom:.4rem;} #todBox .todLab b{margin-left:.5rem;font-family:ui-monospace,Menlo,monospace;color:var(--accent);}
+#todBox .todBtns{display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.4rem;} #todBox .todBtns .opt{padding:.28rem .6rem;font-family:inherit;} #todBox input[type=range]{width:100%;} #todBox .todFlow{display:block;font-size:.72rem;color:var(--dim);margin-top:.3rem;}
+
 </style>
 </head>
 <body>
@@ -271,18 +277,13 @@ select{background:#1b231f;color:#fff;border:1px solid rgba(255,255,255,.2);borde
 <!-- HUD -->
 <div id="hud">
 <div class="topbar">
-<div class="plate" id="timeBox"><div class="lab">燃料 FUEL（秒）</div><div class="num" id="timeNum">150</div><div class="barWrap" style="margin-bottom:0"><div id="fuelBar"></div></div></div>
+<div class="plate" id="timeBox"><div class="lab">燃料 FUEL（秒）</div><div class="num" id="timeNum">90</div><div class="barWrap" style="margin-bottom:0"><div id="fuelBar"></div></div></div>
 <div class="plate" id="scoreBox"><div class="lab">SCORE</div><div class="num" id="scoreNum">0</div><div id="yenLine">被害総額 ¥0</div></div>
 <div class="plate" id="rateBox"><div class="lab">破壊率</div><div class="num"><span id="rateNum">0.0</span><span style="font-size:.9rem">%</span></div></div>
 </div>
 <div id="leftStats">
 <div class="lab">ヘリ耐久</div>
 <div class="barWrap"><div id="hpBar"></div></div>
-<div class="wrow"><span>🚁 コレクティブ</span><b id="collState">55%</b></div>
-<div class="barWrap" style="height:.42rem"><div id="collBar" style="height:100%;background:#ffb02e;width:55%"></div></div>
-<div class="wrow"><span>⚙ ローターRPM</span><b id="rpmState">100%</b></div>
-<div class="wrow"><span>⛽ スロットル</span><b id="thrState">100%</b></div>
-<div class="wrow"><span>💨 対気速度</span><b id="spdState">0 km/h</b></div>
 <div class="wrow"><span>💣 爆弾 [F]</span><b id="bombState" class="ready">READY</b></div>
 <div class="wrow"><span>🧨 ミサイル [G]</span><b id="mslState" class="ready">READY</b></div>
 <div class="wrow"><span>🎯 誘導ミサイル [J]</span><b id="homState" class="ready">READY</b></div>
@@ -295,7 +296,7 @@ select{background:#1b231f;color:#fff;border:1px solid rgba(255,255,255,.2);borde
 <div id="cross"></div>
 <div id="padNav"><div id="padArrow">▲</div><div id="padDist">ヘリポート 0m</div><div id="fuelDist">⛽ 給油スポット 0m</div><div id="repairDist">🔧 整備場 0m</div></div>
 <div id="returnWarn">⚠ 燃料残量わずか — ヘリポートへ戻れ！</div>
-<div id="refuelBox"><div class="rfLab">⛽ 給油中… 敵の攻撃に注意！</div><div class="barWrap" style="margin:.35rem 0 0"><div id="refuelBar"></div></div><div class="rfSub">あと <span id="refuelSec">5.0</span> 秒キープで 燃料 +75秒</div></div>
+<div id="refuelBox"><div class="rfLab">⛽ 給油中… 敵の攻撃に注意！</div><div class="barWrap" style="margin:.35rem 0 0"><div id="refuelBar"></div></div><div class="rfSub">あと <span id="refuelSec">5.0</span> 秒キープで 燃料 +60秒</div></div>
 <div id="repairBox"><div class="rpLab">🔧 整備中… 敵の攻撃に注意！</div><div class="barWrap" style="margin:.35rem 0 0"><div id="repairBar"></div></div><div class="rpSub">あと <span id="repairSec">3.0</span> 秒キープで 耐久 全回復（被弾すると回復しきれない）</div></div>
 <div id="centerMsg"></div>
 <div id="hitFlash"></div>
@@ -340,38 +341,35 @@ select{background:#1b231f;color:#fff;border:1px solid rgba(255,255,255,.2);borde
 <button class="stageCard" data-stage="airport" disabled><div class="bar" style="background:#e8e4da"></div><div class="sname">✈ 空港</div><div class="sdesc">滑走路標示・ターミナル・管制塔・地上作業車両が並ぶ。駐機中の旅客機が目玉の高価値目標</div></button>
 <button class="stageCard" data-stage="office" disabled><div class="bar" style="background:#5b8fc4"></div><div class="sname">🏢 オフィス街</div><div class="sdesc">ガラス張りの高層オフィスビルが林立するビジネス街。本社ビルやタワーが密集し、看板・広場の噴水・立体駐車場のある高額被害エリア</div></button>
 <button class="stageCard" data-stage="radio" disabled><div class="bar" style="background:#e0492e"></div><div class="sname">📡 電波塔</div><div class="sdesc">高さ62mの赤白格子鉄塔がそびえる送信所エリア。パラボラアンテナ・中継塔・送信所を巻き込みながら、目玉の電波塔を倒しきれるか</div></button>
+<button class="stageCard" data-stage="world" disabled><div class="bar" style="background:linear-gradient(90deg,#4da3d8,#57d977,#ffd34a)"></div><div class="sname">🌍 大空・自由飛行</div><div class="sdesc">山・湖・森・街が続く広大な世界を、時間無制限で自由に飛び回る。近づいた建物は壊せる。高度1500mまで飛行可能</div></button>
 </div>
 <div id="stageBest">ベスト記録（都市）： まだなし</div>
-<div class="lab" style="margin-top:.7rem">出撃時間帯 — TIME OF DAY</div>
-<div class="stageGrid" id="todGrid" style="grid-template-columns:repeat(4,1fr)">
-<button type="button" class="stageCard todCard" data-tod="morning"><div class="bar" style="background:#ffb37a"></div><div class="sname">🌅 朝</div><div class="sdesc">低い朝日と長い影。街がゆっくり目覚める</div></button>
-<button type="button" class="stageCard todCard sel" data-tod="day"><div class="bar" style="background:#7ec8f2"></div><div class="sname">☀️ 昼</div><div class="sdesc">明るい昼間。視界が一番よく見通せる</div></button>
-<button type="button" class="stageCard todCard" data-tod="evening"><div class="bar" style="background:#ff7a3c"></div><div class="sname">🌇 夕方</div><div class="sdesc">茜色の空と灯り始める街の明かり</div></button>
-<button type="button" class="stageCard todCard" data-tod="night"><div class="bar" style="background:#5a6fd8"></div><div class="sname">🌃 夜</div><div class="sdesc">夜間飛行。街灯・窓明かり・航空障害灯が際立つ</div></button>
-</div>
-<div class="quick"><code>WASD</code>移動 <code>Space</code>/<code>Shift</code>コレクティブ上下 <code>PgUp</code>/<code>PgDn</code>スロットル <code>F</code>爆弾 <code>G</code>ミサイル <code>H</code>機関銃(長押し) <code>J</code>誘導ミサイル ／ 画面ドラッグで照準。<b style="color:#fff">燃料150秒、時間内にヘリポートへ着陸で記録が残る。</b></div>
+<div class="quick"><code>WASD</code>移動 <code>Space</code>/<code>Shift</code>上昇・下降 <code>PgUp</code>/<code>PgDn</code>スロットル <code>F</code>爆弾 <code>G</code>ミサイル <code>H</code>機関銃(長押し) <code>J</code>誘導 <code>R</code>フレア <code>V</code>視点 <code>Esc</code>設定 ／ 画面ドラッグで照準。<b style="color:#fff">燃料90秒、時間内にヘリポートへ着陸で記録が残る。</b></div>
 <details class="howto"><summary>▼ 遊び方・全ルールを見る</summary>
 <div class="rules">
 <div><b>💣 爆弾投下</b>真下に落とす広範囲攻撃。密集地で真価を発揮。爆発は白い閃光→乱流する火球→衝撃波と土煙の輪→遅れてくる二次爆発と続き、地面には焦げ跡が残る。建物は軋んで傾いてから加速して崩れ落ち、地面に叩きつけられる衝撃が伝わってくる</div>
-<div><b>🧭 飛び方は標準方式</b>スティックで前後左右へ移動、▲▼ボタン（PCはSpace／Shift）で上昇・下降する標準方式。画面のドラッグで視点と照準が一緒に動く——ヘリの向きや進む方向は変わらないが、ミサイルと機関銃は照準の方向へ飛ぶ</div>
-<div><b>⛽ スロットル / コレクティブ</b>実機と同じ考え方：コレクティブ（Space／Shift、スティックのレバー）は全ブレードのピッチを変えて上昇・下降する。スロットル（PageUp／PageDown）はエンジン出力で、上げるとローターRPM・最大速度・加速が上がる。前に倒して進むとき、スロットルを上げているほど速く飛べる。コレクティブを上げすぎるとRPMが下がって揚力が落ちるので注意。フライトスティックのレバーは「設定 → ジョイスティック → スロットル/コレクティブ軸」に割り当てると絶対位置で動く</div>
+<div><b>🧭 操縦はヘリ式（実機・DCS準拠）</b>スティック/WASD＝サイクリック(機体を傾けて前後左右へ)、Q・E/ツイスト＝ペダル(旋回)、Space・Shift/スロットルレバー＝コレクティブ(上昇・下降)、PageUp・PageDown/別軸＝スロットル(エンジン出力。上げるほど前進が速い)。設定で「アーケード」と「シミュレーター」を切替でき、シミュレーターはコレクティブを上げるほど機首が横に流れる反トルクや、ホバリングの難しさまで再現</div>
 <div><b>🧨 ミサイル</b>照準の方向へまっすぐ発射。視点を上に向ければ上へ、下に向ければ下へ撃てる。狙ったビルをピンポイントで</div>
 <div><b>🎯 誘導ミサイル（最大3発）</b>敵ヘリ・戦闘機をロックオンして追尾、高確率で命中して大ダメージ。ただし敵がフレアを焚くと逸れて外れることも。近距離で当てると爆発に巻き込まれて自分もダメージを受ける。使えるのは1回の出撃で最大3発まで — 撃ち切ったらその出撃ではもう撃てない（残数はボタンと左上の武器表示で確認）</div>
 <div><b>⚡ 機関銃（長押し連射）</b>機体下部の砲塔から、照準の方向へ曳光弾を連射。砲塔が照準に合わせて動き、弾が飛んでいくのがはっきり見える。車・敵ヘリ・戦闘機に効く。建物も削れるが爆発はしない</div>
 <div><b>🔥 誘爆コンボ</b>爆発が連鎖するたびコンボ倍率アップ</div>
 <div><b>⚠ 激突注意</b>ビルにぶつかるとヘリが損傷。壊れたら終了</div>
 <div><b>⛽ 帰還必須</b>時間内にヘリポートへ戻って着陸せよ。間に合わなければ燃料切れで墜落＝アウト（記録なし）</div>
-<div><b>🟢 給油スポット（1回のみ）</b>緑の光の柱が目印。着陸して5秒間じっと待機すると燃料を半分（+75秒）補給できる。ただし使えるのは1回だけ——給油が終わるとスポットは消えてしまう。給油中も敵ヘリ・戦闘機の攻撃は止まらないので、使うタイミングが大事</div>
+<div><b>🟢 給油スポット（1回のみ）</b>緑の光の柱が目印。着陸して5秒間じっと待機すると燃料を半分（+60秒）補給できる。ただし使えるのは1回だけ——給油が終わるとスポットは消えてしまう。給油中も敵ヘリ・戦闘機の攻撃は止まらないので、使うタイミングが大事</div>
 <div><b>🔵 整備場</b>青い光の柱と「＋」マークが目印。着陸して3秒間じっと待機すると機体耐久が全回復する。ただし整備中も敵の攻撃は止まらない——途中で被弾すると、その分は回復しきれないこともある。燃料も減り続けるので長居は禁物。1回使うと10秒間のクールダウンに入り、その間は座っても回復は始まらない（残り秒数は画面に表示される）</div>
 <div><b>🧭 帰還ナビ</b>黄色い光の柱と、画面中央の矢印＋距離表示がヘリポートを示す</div>
 <div><b>🚁 まず敵ヘリ</b>開始直後、敵攻撃ヘリが発進モーションのあと接近して機銃で撃ってくる。序盤の相手はこの1機だけ</div>
 <div><b>✈ 次に戦闘機</b>開始から約35秒後、戦闘機がスクランブル発進して攻撃に加わる。ここから一気に厳しくなる。機体は16m級の本格派：2色迷彩とパネルライン／リベットの質感、後退翼とLERX、全遊動の尾翼と傾いた双垂直尾翼、コックピット内の射出座席とHUD、インテークの暗い吸気口、翼下パイロンとミサイル、離陸後に格納されるランディングギア、そして左右2基のアフターバーナー（青いコアとショックダイヤモンド付き）</div>
 <div><b>💥 撃墜 or 帰還</b>敵ヘリはミサイルで撃墜可能（＋2,500点）、戦闘機も撃墜可能（＋5,000点）。HPがゼロになるとその場で墜落＝アウト（記録なし）。急旋回と高度変更で回避せよ</div>
-<div><b>🌆 夕景と灯り</b>出撃が進むにつれて日が傾き、空と霧が琥珀色に染まって街の灯りが際立ってくる。高層ビルの航空障害灯の点滅、夕方に灯る街灯の光だまり、走る車のヘッドライト、倒壊した建物の残り火と細い煙も出る</div>
+<div><b>🌍 大空・自由飛行ステージ</b>山・湖・森・畑・街が地平線まで続く広大な世界を、燃料無制限で飛び回れる。進むほど新しい地形と街が自動生成され、近づいた建物は壊せる(上昇限度1500m)。ポーズ(Esc)からリザルトへ</div>
+<div><b>🕒 時間帯を選べる</b>出撃前に早朝・朝・昼・夕方・夜・深夜、または0〜24時のスライダーで好きな時刻を選べる(「時間を進める」も可)。夜は星と月、街と窓の灯り、ヘリのランディングライトが点く</div>
+<div><b>🏗 リアルな破壊</b>命中した場所と威力に応じて、外壁に燃える穴が開き、倒壊は最上階から崩れ落ちる。火災と煙が長く残る</div>
+<div><b>🎮 ジョイスティック対応</b>Thrustmaster等を接続して、設定からスティック軸・スロットルレバー・ボタンを自由に割り当て可能(校正付き)。キーボードの割り当ても自由に変更できる</div>
+<div><b>🌆 灯りと街並み</b>高層ビルの航空障害灯、街灯、車のヘッドライト、倒壊した建物の残り火と煙。信号機は実際に切り替わり、街は大都市らしく車で賑わう</div>
 <div><b>🌃 生きた街並み</b>信号機は青→黄→赤と実際に切り替わり（点いていないランプは暗くなる）、レーダーのパラボラは回り続けて空を監視し、街路樹と桜は風に揺れる。走る車は路面でサスペンションが小さく上下し、ヘリの排気口はエンジンの熱でほのかに明滅する——どれも新しい描画を増やさず、動きだけで実在感を足した軽い演出</div>
 </div>
 <div class="keys">
-PC： <code>W A S D</code> 移動 ／ <code>Q E</code> 旋回(ペダル) ／ <code>Space</code>/<code>Shift</code> コレクティブ上げ/下げ ／ <code>PgUp</code>/<code>PgDn</code> スロットル ／ <code>F</code> 爆弾 ／ <code>G</code> ミサイル／ <code>H</code> 機関銃（長押しで連射）／ <code>J</code> 誘導ミサイル<br>
+PC： <code>W A S D</code> 移動 ／ <code>Q E</code> 旋回 ／ <code>Space</code>/<code>Shift</code> コレクティブ上げ/下げ ／ <code>PageUp</code>/<code>PageDown</code> スロットル ／ <code>F</code> 爆弾 ／ <code>G</code> ミサイル／ <code>H</code> 機関銃（長押し）／ <code>J</code> 誘導ミサイル ／ <code>R</code> フレア ／ <code>V</code> 視点切替 ／ <code>M</code> BGM ／ <code>Esc</code> ポーズ・設定<br>
 スマホ： 左スティックで移動、右のボタンで上昇・下降・旋回・攻撃（機関銃ボタンは長押しで連射、🎯誘導ボタンは敵機がいる時だけ発射できる）<br>
 見回し・照準： 画面の空いている所をドラッグするとカメラと照準が一緒に動く。左右にドラッグするとヘリもその見た方向へ向き直る。上下に向けると照準も上下に動き、ミサイル・機関銃は照準の方向へ飛ぶ（ヘリの向きや進む方向は変わらない）<br>
 着陸： ヘリポートの円の内側で、ゆっくり降下して接地すれば帰還成功
